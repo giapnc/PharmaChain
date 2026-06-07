@@ -374,13 +374,13 @@ DELIMITER ;;
     DECLARE days_to_expiry INT;
     SET days_to_expiry = DATEDIFF(NEW.expiry_date, NOW());
 
-    
+
     IF days_to_expiry < 0 THEN
         SET NEW.status = 'EXPIRED';
-    
+
     ELSEIF days_to_expiry <= 30 THEN
         SET NEW.status = 'EXPIRING_SOON';
-    
+
     ELSEIF NEW.available_quantity <= NEW.min_stock_level THEN
         SET NEW.status = 'LOW_STOCK';
     ELSE
@@ -475,7 +475,7 @@ CREATE TABLE `distributor_users` (
 
 LOCK TABLES `distributor_users` WRITE;
 /*!40000 ALTER TABLE `distributor_users` DISABLE KEYS */;
-INSERT INTO `distributor_users` VALUES ('4fbcb239-fc46-484f-83ef-ea734a947b37',NULL,'Doanh nghiệp B','2026-04-28 01:04:30.717668','doanhnghiepb@gmail.com',1,0,0,'2026-04-28 01:04:57.523955',NULL,NULL,'Nguyễn Văn B','$2a$10$U35CGBY69BuI/3fR3/YtG.7xK1wOuYyC.x/rPSthb6Rh4ck43bp0.',NULL,'DISTRIBUTOR','2026-05-23 15:07:33.992794','0x123'),('dist-001-uuid','789 Đường GHI, Quận 3, TP.HCM','Nhà phân phối CPC1 Hà Nội','2025-09-29 19:00:12.000000','distributor@demo.com',1,1,1,'2026-05-23 14:31:42.488422',NULL,NULL,'Nguyễn Văn A','$2a$10$o3ABfhYYdNcB0H9AXvIYmO1zgHEbO0gYJ/6ydJUWrJZPIg8oFA4oK','0903456789','DISTRIBUTOR','2026-05-25 20:13:08.121814','0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'),('dist-002-uuid','321 Đường JKL, Quận 7, TP.HCM','Zuellig Pharma Vietnam','2025-09-29 19:00:12.000000','zuellig@demo.com',1,1,1,'2026-05-23 14:32:20.275835',NULL,NULL,'Trần Thị Zuellig','$2a$10$5w2xRGiIGSDtvv09rEmcYuDttLmviovmIXBrQhQqQa14ZfFMc/Vda','0904567890','DISTRIBUTOR','2026-05-23 14:32:20.276986','0x90F79bf6EB2c4f870365E785982E1f101E93b906');
+INSERT INTO `distributor_users` VALUES ('4fbcb239-fc46-484f-83ef-ea734a947b37',NULL,'Doanh nghiệp B','2026-04-28 01:04:30.717668','doanhnghiepb@gmail.com',1,0,0,'2026-04-28 01:04:57.523955',NULL,NULL,'Nhà phân phối B','$2a$10$U35CGBY69BuI/3fR3/YtG.7xK1wOuYyC.x/rPSthb6Rh4ck43bp0.',NULL,'DISTRIBUTOR','2026-05-23 15:07:33.992794','0x123'),('dist-001-uuid','789 Đường GHI, Quận 3, TP.HCM','Nhà phân phối CPC1 Hà Nội','2025-09-29 19:00:12.000000','distributor@demo.com',1,1,1,'2026-05-23 14:31:42.488422',NULL,NULL,'Nhà phân phối A','$2a$10$o3ABfhYYdNcB0H9AXvIYmO1zgHEbO0gYJ/6ydJUWrJZPIg8oFA4oK','0903456789','DISTRIBUTOR','2026-05-25 20:13:08.121814','0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'),('dist-002-uuid','321 Đường JKL, Quận 7, TP.HCM','Zuellig Pharma Vietnam','2025-09-29 19:00:12.000000','zuellig@demo.com',1,1,1,'2026-05-23 14:32:20.275835',NULL,NULL,'Trần Thị Zuellig','$2a$10$5w2xRGiIGSDtvv09rEmcYuDttLmviovmIXBrQhQqQa14ZfFMc/Vda','0904567890','DISTRIBUTOR','2026-05-23 14:32:20.276986','0x90F79bf6EB2c4f870365E785982E1f101E93b906');
 /*!40000 ALTER TABLE `distributor_users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -817,7 +817,7 @@ CREATE TABLE `manufacturer_users` (
 
 LOCK TABLES `manufacturer_users` WRITE;
 /*!40000 ALTER TABLE `manufacturer_users` DISABLE KEYS */;
-INSERT INTO `manufacturer_users` VALUES ('manu-001-uuid','123 Đường ABC, Quận 1, TP.HCM','Công ty Cổ phần Dược Hậu Giang\r\n','2025-09-29 19:00:12.000000','manufacturer@demo.com',1,'2026-05-26 21:29:48.097810',NULL,'Lê Văn Hậu Giang','$2a$10$zCd/f06gk5Q.jU14BVgVE.q6Ltz69DsrKGS2HHPtkCf3Losb0Z3PW','MANUFACTURER','2026-05-26 21:29:48.108565','0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'),('manu-002-uuid','456 Đường DEF, Hà Nội','Traphaco JSC','2025-09-29 19:00:12.000000','traphaco@demo.com',1,NULL,NULL,'Phạm Thị Traphaco','$2a$10$tyE/oab7/nH7Al93GIpA3eGPL1xmxn0xTNq5RFKCn7Wbv2Q1zSayW','MANUFACTURER',NULL,'0x70997970C51812dc3A010C7d01b50e0d17dc79C8');
+INSERT INTO `manufacturer_users` VALUES ('manu-001-uuid','123 Đường ABC, Quận 1, TP.HCM','Công ty Cổ phần Dược Hậu Giang\r\n','2025-09-29 19:00:12.000000','manufacturer@demo.com',1,'2026-05-26 21:29:48.097810',NULL,'Nhà sản xuất A','$2a$10$zCd/f06gk5Q.jU14BVgVE.q6Ltz69DsrKGS2HHPtkCf3Losb0Z3PW','MANUFACTURER','2026-05-26 21:29:48.108565','0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'),('manu-002-uuid','456 Đường DEF, Hà Nội','Traphaco JSC','2025-09-29 19:00:12.000000','traphaco@demo.com',1,NULL,NULL,'Phạm Thị Traphaco','$2a$10$tyE/oab7/nH7Al93GIpA3eGPL1xmxn0xTNq5RFKCn7Wbv2Q1zSayW','MANUFACTURER',NULL,'0x70997970C51812dc3A010C7d01b50e0d17dc79C8');
 /*!40000 ALTER TABLE `manufacturer_users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1199,16 +1199,16 @@ DELIMITER ;;
     DECLARE days_to_expiry INT;
     SET days_to_expiry = DATEDIFF(NEW.expiry_date, NOW());
 
-    
+
     IF days_to_expiry < 0 THEN
         SET NEW.status = 'EXPIRED';
-    
+
     ELSEIF days_to_expiry <= 30 THEN
         SET NEW.status = 'EXPIRING_SOON';
-    
+
     ELSEIF NEW.available_quantity <= 0 THEN
         SET NEW.status = 'OUT_OF_STOCK';
-    
+
     ELSEIF NEW.available_quantity <= NEW.min_stock_level THEN
         SET NEW.status = 'LOW_STOCK';
     ELSE
@@ -2032,7 +2032,7 @@ DROP TABLE IF EXISTS `v_batch_status`;
 /*!50001 DROP VIEW IF EXISTS `v_batch_status`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_batch_status` AS SELECT 
+/*!50001 CREATE VIEW `v_batch_status` AS SELECT
  1 AS `batch_id`,
  1 AS `drug_name`,
  1 AS `batch_number`,
@@ -2052,7 +2052,7 @@ DROP TABLE IF EXISTS `v_blockchain_overview`;
 /*!50001 DROP VIEW IF EXISTS `v_blockchain_overview`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_blockchain_overview` AS SELECT 
+/*!50001 CREATE VIEW `v_blockchain_overview` AS SELECT
  1 AS `transaction_hash`,
  1 AS `function_name`,
  1 AS `from_address`,
@@ -2072,7 +2072,7 @@ DROP TABLE IF EXISTS `v_company_users`;
 /*!50001 DROP VIEW IF EXISTS `v_company_users`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_company_users` AS SELECT 
+/*!50001 CREATE VIEW `v_company_users` AS SELECT
  1 AS `company_id`,
  1 AS `company_name`,
  1 AS `company_type`,
@@ -2091,7 +2091,7 @@ DROP TABLE IF EXISTS `v_distributor_inventory_full`;
 /*!50001 DROP VIEW IF EXISTS `v_distributor_inventory_full`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_distributor_inventory_full` AS SELECT 
+/*!50001 CREATE VIEW `v_distributor_inventory_full` AS SELECT
  1 AS `id`,
  1 AS `distributor_id`,
  1 AS `batch_id`,
@@ -2141,7 +2141,7 @@ DROP TABLE IF EXISTS `v_item_movement_summary`;
 /*!50001 DROP VIEW IF EXISTS `v_item_movement_summary`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_item_movement_summary` AS SELECT 
+/*!50001 CREATE VIEW `v_item_movement_summary` AS SELECT
  1 AS `item_id`,
  1 AS `item_code`,
  1 AS `current_status`,
@@ -2162,7 +2162,7 @@ DROP TABLE IF EXISTS `v_item_verification_summary`;
 /*!50001 DROP VIEW IF EXISTS `v_item_verification_summary`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_item_verification_summary` AS SELECT 
+/*!50001 CREATE VIEW `v_item_verification_summary` AS SELECT
  1 AS `item_id`,
  1 AS `item_code`,
  1 AS `current_status`,
@@ -2184,7 +2184,7 @@ DROP TABLE IF EXISTS `v_pharmacy_inventory_full`;
 /*!50001 DROP VIEW IF EXISTS `v_pharmacy_inventory_full`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_pharmacy_inventory_full` AS SELECT 
+/*!50001 CREATE VIEW `v_pharmacy_inventory_full` AS SELECT
  1 AS `id`,
  1 AS `pharmacy_id`,
  1 AS `batch_id`,
@@ -2249,7 +2249,7 @@ DROP TABLE IF EXISTS `v_product_items_full`;
 /*!50001 DROP VIEW IF EXISTS `v_product_items_full`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_product_items_full` AS SELECT 
+/*!50001 CREATE VIEW `v_product_items_full` AS SELECT
  1 AS `item_id`,
  1 AS `item_code`,
  1 AS `current_status`,
@@ -2288,7 +2288,7 @@ DROP TABLE IF EXISTS `v_shipment_history`;
 /*!50001 DROP VIEW IF EXISTS `v_shipment_history`*/;
 SET @saved_cs_client     = @@character_set_client;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `v_shipment_history` AS SELECT 
+/*!50001 CREATE VIEW `v_shipment_history` AS SELECT
  1 AS `shipment_code`,
  1 AS `batch_id`,
  1 AS `drug_name`,
