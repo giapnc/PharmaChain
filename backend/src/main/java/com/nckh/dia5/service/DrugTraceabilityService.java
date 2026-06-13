@@ -55,7 +55,7 @@ public class DrugTraceabilityService {
             if (request.getRawMaterialBatchNumber() != null && !request.getRawMaterialBatchNumber().isEmpty()) {
                 com.nckh.dia5.model.RawMaterialBatch rmBatch = rawMaterialBatchRepository.findByBatchNumber(request.getRawMaterialBatchNumber())
                         .orElseThrow(() -> new IllegalArgumentException("Lô nguyên liệu không tồn tại: " + request.getRawMaterialBatchNumber()));
-                
+
                 if (!"APPROVED".equals(rmBatch.getStatus())) {
                     throw new IllegalArgumentException("Lô nguyên liệu chưa được kiểm định đạt chuẩn!");
                 }
@@ -65,7 +65,7 @@ public class DrugTraceabilityService {
                     throw new IllegalArgumentException("Định mức tiêu hao nguyên liệu phải lớn hơn 0");
                 }
                 if (amountUsed > rmBatch.getQuantity()) {
-                    throw new IllegalArgumentException(String.format("Lượng nguyên liệu trong lô %s không đủ! Yêu cầu: %.2f %s, Hiện có: %.2f %s", 
+                    throw new IllegalArgumentException(String.format("Lượng nguyên liệu trong lô %s không đủ! Yêu cầu: %.2f %s, Hiện có: %.2f %s",
                             rmBatch.getBatchNumber(), amountUsed, rmBatch.getUnit(), rmBatch.getQuantity(), rmBatch.getUnit()));
                 }
 
@@ -73,18 +73,18 @@ public class DrugTraceabilityService {
                 rmBatch.setQuantity(rmBatch.getQuantity() - amountUsed);
                 rawMaterialBatchRepository.save(rmBatch);
             }
-            
+
             // Use default manufacturer address for development (no auth required)
             String manufacturerAddress = getDefaultManufacturerAddress();
 
             // Generate unique batch ID
             BigInteger batchId = generateBatchId();
             log.info("=== GENERATED batchId: {} ===", batchId);
-            
+
             // Generate QR code
             String qrCode = generateQrCode(batchId, request.getBatchNumber());
 
-            log.info("Creating batch: batchId={}, drugName={}, manufacturer={}, quantity={}", 
+            log.info("Creating batch: batchId={}, drugName={}, manufacturer={}, quantity={}",
                      batchId, request.getDrugName(), request.getManufacturer(), request.getQuantity());
 
             // Create local entity FIRST (needed for item generation)
@@ -103,7 +103,8 @@ public class DrugTraceabilityService {
             batch.setRawMaterialAmountUsed(request.getRawMaterialAmountUsed());
             batch.setStatus(com.nckh.dia5.model.DrugBatch.BatchStatus.MANUFACTURED);
             batch.setQrCode(qrCode);
-            batch.setTransactionHash("PENDING_" + System.currentTimeMillis());
+            // batch.setTransactionHash("PENDING_" + System.currentTimeMillis());
+            batch.setTransactionHash(null);
             batch.setBlockNumber(BigInteger.ZERO);
             batch.setIsSynced(false);
 
@@ -119,23 +120,23 @@ public class DrugTraceabilityService {
                 log.info("Auto-generating {} product items for batch {}", request.getQuantity(), batch.getBatchNumber());
                 productItemService.autoGenerateItemsForNewBatch(batch, request.getQuantity());
                 log.info("Successfully auto-generated product items and registered to blockchain");
-                
+
                 // If we reach here, blockchain registration was successful
                 // Update batch with blockchain info (items service should have updated it)
                 batch = drugBatchRepository.findById(batch.getId())
                         .orElseThrow(() -> new RuntimeException("Batch not found after item generation"));
-                
+
             } catch (Exception e) {
-                log.error("Failed to auto-generate product items: {}", e.getMessage(), e);
-                // Don't fail the batch creation if item generation fails
-                // Batch is saved in database, items can be generated later
+                log.error("Failed to auto-generate product items or blockchain mint", e);
+                throw new RuntimeException("Không thể mint lô thuốc lên blockchain", e);
+
             }
 
-            log.info("Batch created successfully: id={}, batchId={}, blockchain={}", 
+            log.info("Batch created successfully: id={}, batchId={}, blockchain={}",
                      batch.getId(), batchId, batch.getIsSynced() ? "synced" : "pending");
-            
+
             DrugBatchDto dto = mapToDrugBatchDto(batch);
-            log.info("=== RETURNING DTO: batchId={} ===", dto.getBatchId());
+            log.info("=== RETURNING DTO: {} ===", dto);
             return dto;
 
         } catch (IllegalArgumentException e) {
@@ -155,10 +156,10 @@ public class DrugTraceabilityService {
         String fromAddress = getDefaultManufacturerAddress();
         boolean blockchainSuccess = false;
         TransactionReceipt receipt = null;
-        
+
         try {
             log.info("Starting shipment creation process...");
-            
+
             // Find the batch
             log.info("Looking for batch with ID: {}", request.getBatchId());
             log.info("DEBUG: All batches in DB:");
@@ -166,10 +167,10 @@ public class DrugTraceabilityService {
             List<com.nckh.dia5.model.DrugBatch> allBatches = drugBatchRepository.findAll();
             log.info("DEBUG: Total batches found: {}", allBatches.size());
             for (com.nckh.dia5.model.DrugBatch b : allBatches) {
-                log.info("  - DB ID: {}, Batch ID: {}, Number: {}, Owner: {}", 
+                log.info("  - DB ID: {}, Batch ID: {}, Number: {}, Owner: {}",
                     b.getId(), b.getBatchId(), b.getBatchNumber(), b.getCurrentOwner());
             }
-            
+
             com.nckh.dia5.model.DrugBatch batch = drugBatchRepository.findByBatchId(request.getBatchId())
                     .orElseThrow(() -> new ResourceNotFoundException("Batch", "batchId", request.getBatchId().toString()));
             log.info("Found batch: {} with owner: {}", batch.getBatchNumber(), batch.getCurrentOwner());
@@ -191,7 +192,7 @@ public class DrugTraceabilityService {
             BigInteger shipmentId = generateShipmentId();
             log.info("Generated shipment ID: {}", shipmentId);
 
-            log.info("Creating shipment: shipmentId={}, batchId={}, from={}, to={}, quantity={}", 
+            log.info("Creating shipment: shipmentId={}, batchId={}, from={}, to={}, quantity={}",
                      shipmentId, request.getBatchId(), fromAddress, request.getToAddress(), request.getQuantity());
 
             // Generate tracking info if not provided
@@ -199,7 +200,7 @@ public class DrugTraceabilityService {
             if (trackingInfo == null || trackingInfo.trim().isEmpty()) {
                 trackingInfo = "SHIPMENT-" + shipmentId;
             }
-            
+
             // Try to find recipient name and normalize it
             String toLocationName = "Khach hang";
             Optional<PharmaCompany> toCompany = pharmaCompanyRepository.findByWalletAddress(request.getToAddress());
@@ -228,7 +229,7 @@ public class DrugTraceabilityService {
                 ).get();
                 blockchainSuccess = true;
                 log.info("Shipment created on blockchain successfully with tracking: {}", trackingInfo);
-                
+
                 // ✅ CRITICAL FIX: Extract the REAL shipmentId assigned by the blockchain counter
                 BigInteger realShipmentId = blockchainService.extractShipmentId(receipt).orElse(shipmentId);
                 if (!realShipmentId.equals(shipmentId)) {
@@ -268,7 +269,7 @@ public class DrugTraceabilityService {
                 );
             }
             log.info("Shipment entity created successfully");
-            
+
             shipment.setStatus(Shipment.ShipmentStatus.PENDING);
             shipment.setDrugBatch(batch);
 
@@ -283,7 +284,7 @@ public class DrugTraceabilityService {
                 recordBlockchainTransaction(receipt, "createShipment", batch, shipment);
             }
 
-            log.info("Shipment created successfully: id={}, shipmentId={}, blockchain={}", 
+            log.info("Shipment created successfully: id={}, shipmentId={}, blockchain={}",
                      shipment.getId(), shipmentId, blockchainSuccess);
             return mapToShipmentDto(shipment);
 
@@ -317,7 +318,7 @@ public class DrugTraceabilityService {
 
             // Try multiple lookup strategies to find the shipment
             Shipment shipment = null;
-            
+
             // Strategy 1: Look by shipment code (SHIP-{id})
             Optional<Shipment> shipmentOpt = shipmentRepository.findByShipmentId(shipmentId);
             if (shipmentOpt.isPresent()) {
@@ -368,7 +369,7 @@ public class DrugTraceabilityService {
                         log.warn("Failed to extract receiver address from notes: {}", e.getMessage());
                     }
                 }
-                
+
                 if (receiverAddress == null) {
                     receiverAddress = shipment.getToCompany() != null ? shipment.getToCompany().getWalletAddress() : null;
                 }
@@ -409,12 +410,12 @@ public class DrugTraceabilityService {
                 savedShipmentForLink,
                 receiverAddress
             ).get();
-            
+
             // ✅ Persist the NEW receive TX hash (distinct from createTxHash)
             shipment.setReceiveTxHash(receipt.getTransactionHash());
             shipment = shipmentRepository.save(shipment);
-            
-            log.info("✅ receiveShipment: new TX hash={} (Block={}) saved to shipment.receiveTxHash", 
+
+            log.info("✅ receiveShipment: new TX hash={} (Block={}) saved to shipment.receiveTxHash",
                      receipt.getTransactionHash(), receipt.getBlockNumber());
             // recordBlockchainTransaction() is intentionally NOT called here -
             // BlockchainService.receiveShipmentWithLink already saved to Admin Log with shipment linkage.
@@ -439,7 +440,7 @@ public class DrugTraceabilityService {
                             shipment.getQuantity(),
                             shipment
                         );
-                        log.info("✅ Added to pharmacy_inventory: pharmacy={}, batch={}, quantity={}", 
+                        log.info("✅ Added to pharmacy_inventory: pharmacy={}, batch={}, quantity={}",
                                 receiver.getName(), batch.getBatchNumber(), shipment.getQuantity());
                     } else if (receiver.getCompanyType() == PharmaCompany.CompanyType.DISTRIBUTOR) {
                         // Add to distributor_inventory table
@@ -449,7 +450,7 @@ public class DrugTraceabilityService {
                             shipment.getQuantity(),
                             shipment
                         );
-                        log.info("✅ Added to distributor_inventory: distributor={}, batch={}, quantity={}", 
+                        log.info("✅ Added to distributor_inventory: distributor={}, batch={}, quantity={}",
                                 receiver.getName(), batch.getBatchNumber(), shipment.getQuantity());
                     }
                 }
@@ -500,13 +501,13 @@ public class DrugTraceabilityService {
                         log.warn("Failed to extract receiver address from notes: {}", e.getMessage());
                     }
                 }
-                
+
                 if (receiverAddress == null) {
                     receiverAddress = shipment.getToCompany() != null ? shipment.getToCompany().getWalletAddress() : null;
                 }
             }
-            
-            log.info("Receiving shipment by database ID: databaseId={}, shipmentCode={}, receiver={}", 
+
+            log.info("Receiving shipment by database ID: databaseId={}, shipmentCode={}, receiver={}",
                      databaseId, shipment.getShipmentCode(), receiverAddress);
 
             // ✅ FIX: Also call blockchain receiveShipment for fallback path (generates unique TX hash)
@@ -544,10 +545,10 @@ public class DrugTraceabilityService {
                 ).get();
                 shipment.setReceiveTxHash(receipt.getTransactionHash());
                 shipment = shipmentRepository.save(shipment);
-                log.info("✅ receiveShipmentByDatabaseId: new TX hash={} (Block={})", 
+                log.info("✅ receiveShipmentByDatabaseId: new TX hash={} (Block={})",
                          receipt.getTransactionHash(), receipt.getBlockNumber());
             } catch (Exception blockchainEx) {
-                log.warn("⚠️ Blockchain call failed in receiveShipmentByDatabaseId, status already set to DELIVERED: {}", 
+                log.warn("⚠️ Blockchain call failed in receiveShipmentByDatabaseId, status already set to DELIVERED: {}",
                          blockchainEx.getMessage());
                 // Do not rethrow — shipment is already DELIVERED in DB
             }
@@ -572,7 +573,7 @@ public class DrugTraceabilityService {
                             shipment.getQuantity(),
                             shipment
                         );
-                        log.info("✅ Added to pharmacy_inventory: pharmacy={}, batch={}, quantity={}", 
+                        log.info("✅ Added to pharmacy_inventory: pharmacy={}, batch={}, quantity={}",
                                 receiver.getName(), batch.getBatchNumber(), shipment.getQuantity());
                     } else if (receiver.getCompanyType() == PharmaCompany.CompanyType.DISTRIBUTOR) {
                         // Add to distributor_inventory table
@@ -582,7 +583,7 @@ public class DrugTraceabilityService {
                             shipment.getQuantity(),
                             shipment
                         );
-                        log.info("✅ Added to distributor_inventory: distributor={}, batch={}, quantity={}", 
+                        log.info("✅ Added to distributor_inventory: distributor={}, batch={}, quantity={}",
                                 receiver.getName(), batch.getBatchNumber(), shipment.getQuantity());
                     }
                 } else {
@@ -614,7 +615,7 @@ public class DrugTraceabilityService {
             // Update status
             Shipment.ShipmentStatus newStatus = Shipment.ShipmentStatus.valueOf(request.getNewStatus().toUpperCase());
             shipment.setStatus(newStatus);
-            
+
             if (request.getTrackingInfo() != null) {
                 shipment.setTrackingInfo(request.getTrackingInfo());
             }
@@ -640,7 +641,7 @@ public class DrugTraceabilityService {
 
             // Verify on blockchain
             boolean isValid = blockchainService.verifyOwnership(batch.getBatchId(), batch.getCurrentOwner()).get();
-            
+
             if (!isValid) {
                 throw new IllegalStateException("Thuốc không hợp lệ hoặc đã bị giả mạo");
             }
@@ -702,13 +703,13 @@ public class DrugTraceabilityService {
     public List<ShipmentDto> getShipmentsByBatch(BigInteger batchId) {
         try {
             log.info("Getting shipments for batch: {}", batchId);
-            
+
             com.nckh.dia5.model.DrugBatch batch = drugBatchRepository.findByBatchId(batchId)
                     .orElseThrow(() -> new ResourceNotFoundException("Batch not found with batchId: '" + batchId + "'"));
-            
+
             List<Shipment> shipments = shipmentRepository.findByDrugBatch(batch);
             log.info("Found {} shipments for batch {}", shipments.size(), batchId);
-            
+
             return shipments.stream().map(this::mapToShipmentDto).collect(Collectors.toList());
         } catch (ResourceNotFoundException e) {
             log.error("Batch not found: {}", batchId);
@@ -726,10 +727,10 @@ public class DrugTraceabilityService {
     public List<ShipmentDto> getShipmentsByBatchNumber(String batchNumber) {
         try {
             log.info("Getting shipments for batch number (Số lô): {}", batchNumber);
-            
+
             // First try exact match
             Optional<com.nckh.dia5.model.DrugBatch> batchOpt = drugBatchRepository.findByBatchNumber(batchNumber);
-            
+
             if (batchOpt.isEmpty()) {
                 // Try containing match (for partial batch numbers)
                 List<com.nckh.dia5.model.DrugBatch> batches = drugBatchRepository.findByBatchNumberContaining(batchNumber);
@@ -738,15 +739,15 @@ public class DrugTraceabilityService {
                     log.info("Found batch by partial match: {}", batches.get(0).getBatchNumber());
                 }
             }
-            
+
             if (batchOpt.isEmpty()) {
                 throw new ResourceNotFoundException("Batch not found with batchNumber (Số lô): '" + batchNumber + "'");
             }
-            
+
             com.nckh.dia5.model.DrugBatch batch = batchOpt.get();
             List<Shipment> shipments = shipmentRepository.findByDrugBatch(batch);
             log.info("Found {} shipments for batch number {}", shipments.size(), batchNumber);
-            
+
             return shipments.stream().map(this::mapToShipmentDto).collect(Collectors.toList());
         } catch (ResourceNotFoundException e) {
             log.error("Batch not found by number: {}", batchNumber);
@@ -764,7 +765,7 @@ public class DrugTraceabilityService {
     public List<ShipmentDto> searchShipmentsByBatchIdentifier(String identifier) {
         try {
             log.info("Smart search for shipments with identifier: {}", identifier);
-            
+
             // Strategy 1: Try to find by batch number (Số lô) - e.g., BT202512121857
             if (identifier.startsWith("BT") || !identifier.matches("\\d+")) {
                 try {
@@ -773,7 +774,7 @@ public class DrugTraceabilityService {
                     log.info("Batch number not found, trying batchId...");
                 }
             }
-            
+
             // Strategy 2: Try to find by batchId (blockchain ID) - e.g., 17655406385509934
             try {
                 BigInteger batchId = new BigInteger(identifier);
@@ -781,9 +782,9 @@ public class DrugTraceabilityService {
             } catch (NumberFormatException e) {
                 log.warn("Identifier is not a valid number, cannot search by batchId");
             }
-            
+
             throw new ResourceNotFoundException("Không tìm thấy lô hàng với mã: " + identifier + ". Vui lòng kiểm tra lại Số lô (VD: BT202512121857) hoặc Batch ID.");
-            
+
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -804,28 +805,28 @@ public class DrugTraceabilityService {
     public DrugBatchDto updateBatchStatus(Long id, com.nckh.dia5.model.DrugBatch.BatchStatus status, String reason) {
         com.nckh.dia5.model.DrugBatch batch = drugBatchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lô thuốc với Database ID: " + id));
-        
+
         log.info("Updating batch {} status to {}", batch.getBatchNumber(), status);
         batch.setStatus(status);
-        
+
         // Cập nhật thông tin bổ sung nếu cần (ví dụ: ghi vào notes)
         if (reason != null && !reason.isEmpty()) {
             batch.setStorageConditions(batch.getStorageConditions() + " | THU HỒI: " + reason);
         }
-        
+
         batch = drugBatchRepository.save(batch);
 
         // ✅ MỚI: Lan tỏa trạng thái thu hồi xuống từng sản phẩm con (Items) thông qua Service chính thống
         if (status == com.nckh.dia5.model.DrugBatch.BatchStatus.RECALLED) {
             try {
                 productItemService.recallBatchItems(batch);
-                
+
                 // ✅ MỚI: Tìm và hủy các vận đơn (Shipments) liên quan đang chờ hoặc đang giao
                 List<com.nckh.dia5.model.Shipment> activeShipments = shipmentRepository.findByDrugBatch(batch);
                 for (com.nckh.dia5.model.Shipment shipment : activeShipments) {
-                    if (shipment.getStatus() == com.nckh.dia5.model.Shipment.ShipmentStatus.PENDING || 
+                    if (shipment.getStatus() == com.nckh.dia5.model.Shipment.ShipmentStatus.PENDING ||
                         shipment.getStatus() == com.nckh.dia5.model.Shipment.ShipmentStatus.IN_TRANSIT) {
-                        
+
                         shipment.setStatus(com.nckh.dia5.model.Shipment.ShipmentStatus.CANCELLED);
                         shipment.setNotes(shipment.getNotes() + "\n[AUTO-CANCEL] Lô hàng bị thu hồi bởi NSX.");
                         shipmentRepository.save(shipment);
@@ -844,10 +845,10 @@ public class DrugTraceabilityService {
             final com.nckh.dia5.model.DrugBatch finalBatch = batch;
             try {
                 // Đợi giao dịch hoàn tất để lấy TxHash trả về cho UI
-                org.web3j.protocol.core.methods.response.TransactionReceipt receipt = blockchainService.recallBatch(bId, finalBatch).get(); 
-                log.info("Successfully recalled batch {} on blockchain. TxHash: {}", 
+                org.web3j.protocol.core.methods.response.TransactionReceipt receipt = blockchainService.recallBatch(bId, finalBatch).get();
+                log.info("Successfully recalled batch {} on blockchain. TxHash: {}",
                          batchNum, receipt.getTransactionHash());
-                
+
                 // Cập nhật TxHash vào DB cho lô thuốc
                 batch.setTransactionHash(receipt.getTransactionHash());
                 batch = drugBatchRepository.save(batch);
@@ -855,7 +856,7 @@ public class DrugTraceabilityService {
                 log.error("Failed to trigger blockchain recall for batch {}", batchNum, e);
             }
         }
-        
+
         return mapToDrugBatchDto(batch);
     }
 
@@ -944,7 +945,7 @@ public class DrugTraceabilityService {
         // For now, we'll use a placeholder based on user ID
         return "0x" + user.getId().replace("-", "").substring(0, 40);
     }
-    
+
     private String getDefaultManufacturerAddress() {
         // Default manufacturer address for testing
         // This should be replaced with proper user authentication in production
@@ -952,11 +953,11 @@ public class DrugTraceabilityService {
     }
 
 
-    private void recordBlockchainTransaction(TransactionReceipt receipt, String functionName, 
+    private void recordBlockchainTransaction(TransactionReceipt receipt, String functionName,
                                            com.nckh.dia5.model.DrugBatch batch, Shipment shipment) {
         try {
             String txHash = receipt.getTransactionHash();
-            
+
             // ✅ IDEMPOTENT: Check if record already exists (BlockchainService.executeTransactionInternal may have saved it)
             if (blockchainTransactionRepository.existsByTransactionHash(txHash)) {
                 Optional<BlockchainTransaction> existing = blockchainTransactionRepository.findByTransactionHash(txHash);
@@ -984,7 +985,7 @@ public class DrugTraceabilityService {
                 }
                 return;
             }
-            
+
             // New record - save
             BlockchainTransaction transaction = new BlockchainTransaction();
             transaction.setTransactionHash(txHash);
@@ -996,8 +997,8 @@ public class DrugTraceabilityService {
             transaction.setFunctionName(functionName);
             // Gas used is already BigInteger
             transaction.setGasUsed(receipt.getGasUsed());
-            transaction.setStatus("0x1".equals(receipt.getStatus()) ? 
-                                 BlockchainTransaction.TransactionStatus.SUCCESS : 
+            transaction.setStatus("0x1".equals(receipt.getStatus()) ?
+                                 BlockchainTransaction.TransactionStatus.SUCCESS :
                                  BlockchainTransaction.TransactionStatus.FAILED);
             transaction.setTimestamp(LocalDateTime.now());
             transaction.setDrugBatch(batch);
@@ -1037,16 +1038,16 @@ public class DrugTraceabilityService {
     private ShipmentDto mapToShipmentDto(Shipment shipment) {
         // Extract blockchain data from notes
         Map<String, Object> blockchainData = shipmentAdapter.extractBlockchainData(shipment);
-        
+
         return ShipmentDto.builder()
                 .id(shipment.getId())
                 .shipmentCode(shipment.getShipmentCode())
                 .shipmentId((BigInteger) blockchainData.getOrDefault("shipmentId", BigInteger.ZERO))
-                .fromAddress(shipment.getFromCompany() != null ? 
-                    shipment.getFromCompany().getWalletAddress() : 
+                .fromAddress(shipment.getFromCompany() != null ?
+                    shipment.getFromCompany().getWalletAddress() :
                     (String) blockchainData.get("fromAddress"))
-                .toAddress(shipment.getToCompany() != null ? 
-                    shipment.getToCompany().getWalletAddress() : 
+                .toAddress(shipment.getToCompany() != null ?
+                    shipment.getToCompany().getWalletAddress() :
                     (String) blockchainData.get("toAddress"))
                 .quantity(shipment.getQuantity() != null ? shipment.getQuantity().longValue() : 0L)
                 .shipmentTimestamp(shipment.getShipmentDate())

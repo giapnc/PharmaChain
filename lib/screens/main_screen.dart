@@ -117,8 +117,8 @@ class HomeScreen extends StatelessWidget {
     : super(key: key);
 
   String get _firstName {
-    final name = AuthService.instance.currentUser?.name ?? 'Nhung';
-    if (name.trim().isEmpty) return 'Nhung';
+    final name = AuthService.instance.currentUser?.name ?? 'Nhu Nhu';
+    if (name.trim().isEmpty) return 'Nhu Nhu';
     final parts = name.trim().split(' ');
     return parts.last;
   }

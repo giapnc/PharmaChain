@@ -11,10 +11,11 @@
   margin-bottom: 30px;
 }
 
-.header-title {
+.page-header-blockchain .header-title {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-direction: row;
 }
 
 .header-title h2 {

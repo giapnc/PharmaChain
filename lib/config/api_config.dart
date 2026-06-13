@@ -10,9 +10,12 @@ class ApiConfig {
 
   /// Default fallback URLs theo thứ tự ưu tiên
   static const List<String> _fallbackUrls = [
+    'https://api.nguyennhung.shop', // ✅ IP WiFi của máy (ưu tiên cao nhất)
     'http://172.27.208.1:8080', // ✅ IP WiFi của máy (ưu tiên cao nhất)
     // 'http://10.10.33.223:8080', // IP WiFi cũ (backup)
     // 'http://192.168.110.35:8080', // IP WiFi khác
+    'http://localhost:8080',     // localhost alias (KHÔNG dùng trên Chrome/Android)
+    'http://3.226.122.55/:8080',   // WiFi thường gặp (slot 1)
     'http://192.168.1.6:8080',   // WiFi thường gặp (slot 1)
     'http://192.168.1.100:8080', // WiFi thường gặp (slot 2)
     'http://192.168.1.105:8080',
@@ -22,7 +25,6 @@ class ApiConfig {
     'http://10.0.0.2:8080',
     'http://172.20.10.2:8080',   // iPhone Hotspot
     'http://127.0.0.1:8080',     // localhost (chỉ dùng khi chạy trên máy tính)
-    'http://localhost:8080',     // localhost alias (KHÔNG dùng trên Chrome/Android)
   ];
 
   // Cache in memory để tránh đọc SharedPreferences mỗi request

@@ -867,7 +867,7 @@ CREATE TABLE `manufacturer_users` (
 --
 
 INSERT INTO `manufacturer_users` (`id`, `company_address`, `company_name`, `created_at`, `email`, `is_verified`, `last_login_at`, `license_number`, `name`, `password_hash`, `role`, `updated_at`, `wallet_address`) VALUES
-('manu-001-uuid', '123 Đường ABC, Quận 1, TP.HCM', 'Công ty Cổ phần Dược Hậu Giang\r\n', '2025-09-29 19:00:12.000000', 'manufacturer@demo.com', b'1', '2026-03-25 14:43:46.000000', NULL, 'Lê Văn Hậu Giang', '$2a$10$3alAj9C1NKgRuow/bkcqpOLNtuEQq9RoYnFArbg3UuuQqNAROw32a', 'MANUFACTURER', '2026-03-25 14:43:46.000000', '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'),
+('manu-001-uuid', '123 Đường ABC, Quận 1, TP.HCM', 'Công ty Cổ phần Dược Hậu Giang\r\n', '2025-09-29 19:00:12.000000', 'manufacturer@demo.com', b'1', '2026-03-25 14:43:46.000000', NULL, 'Nhà sản xuất A', '$2a$10$3alAj9C1NKgRuow/bkcqpOLNtuEQq9RoYnFArbg3UuuQqNAROw32a', 'MANUFACTURER', '2026-03-25 14:43:46.000000', '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'),
 ('manu-002-uuid', '456 Đường DEF, Hà Nội', 'Traphaco JSC', '2025-09-29 19:00:12.000000', 'traphaco@demo.com', b'1', NULL, NULL, 'Phạm Thị Traphaco', '$2a$10$tyE/oab7/nH7Al93GIpA3eGPL1xmxn0xTNq5RFKCn7Wbv2Q1zSayW', 'MANUFACTURER', NULL, '0x70997970C51812dc3A010C7d01b50e0d17dc79C8');
 
 -- --------------------------------------------------------

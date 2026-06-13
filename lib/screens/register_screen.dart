@@ -32,7 +32,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final result = await AuthService.instance.register(
         _emailController.text.trim(),
         _passwordController.text,
-        _passwordController.text, // confirmPassword = password (no confirm field)
+        _passwordController
+            .text, // confirmPassword = password (no confirm field)
         null, // no name
       );
 
@@ -49,7 +50,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.error ?? 'Đăng ký thất bại. Vui lòng thử lại.'),
+            content: Text(
+              result.error ?? 'Đăng ký thất bại. Vui lòng thử lại.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -104,9 +107,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: BoxDecoration(
                       color: primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
-                      border: Border.all(color: primary.withValues(alpha: 0.3), width: 2.0),
+                      border: Border.all(
+                        color: primary.withValues(alpha: 0.3),
+                        width: 2.0,
+                      ),
                     ),
-                    child: Icon(Icons.person_add_rounded, size: 44.0, color: primary),
+                    child: Icon(
+                      Icons.person_add_rounded,
+                      size: 44.0,
+                      color: primary,
+                    ),
                   ),
                 ),
 
@@ -147,7 +157,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Vui lòng nhập Gmail';
                     }
-                    if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(value)) {
+                    if (!RegExp(
+                      r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
+                    ).hasMatch(value)) {
                       return 'Gmail không hợp lệ';
                     }
                     return null;
@@ -210,12 +222,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: 20.0,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.0,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
                           'Tạo tài khoản',
-                          style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                 ),
 

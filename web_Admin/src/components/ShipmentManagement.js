@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import manufacturerService from "../services/apiService"
 import "./ShipmentManagement.css"
+import { toast } from "react-toastify"
 
 const ShipmentManagement = () => {
   const [shipments, setShipments] = useState([])
@@ -432,7 +433,7 @@ const ShipmentManagement = () => {
                         onClick={() =>
                           navigator.clipboard
                             .writeText(shipment.shipmentId ?? shipment.id)
-                            .then(() => alert("Copy thành công"))
+                            .then(() => toast.success("Copy thành công"))
                         }>
                         <Hash size={12} />
                         SHIP-{shipment.shipmentId || shipment.id}

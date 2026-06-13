@@ -188,7 +188,7 @@
   background: var(--header-bg);
   border-bottom: 1px solid var(--border-color);
   padding: 0 20px;
-  height: 56px;
+  height: 65px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -469,6 +469,7 @@
 /* User info in sidebar */
 .user-info {
   display: flex;
+  flex-direction: row !important;
   align-items: center;
   gap: 12px;
   padding: 0;

@@ -18,7 +18,7 @@ function LoginScreen({ onSwitchToRegister }) {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear validation error for this field
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
@@ -26,7 +26,7 @@ function LoginScreen({ onSwitchToRegister }) {
         [name]: ''
       }));
     }
-    
+
     // Clear general error
     if (error) {
       clearError();
@@ -54,13 +54,13 @@ function LoginScreen({ onSwitchToRegister }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     const result = await login(formData.email, formData.password);
-    
+
     if (!result.success) {
       console.error('Login failed:', result.error);
     }
@@ -81,7 +81,7 @@ function LoginScreen({ onSwitchToRegister }) {
       <div className="login-container">
         <div className="login-header">
           <div className="login-logo">
-            <ShieldCheck size={48} color="#4f46e5" />
+            <ShieldCheck size={48} />
           </div>
           <h1>Quản trị Hệ thống</h1>
           <p>Hệ thống quản trị và điều phối PharmaChain</p>
@@ -166,7 +166,7 @@ function LoginScreen({ onSwitchToRegister }) {
           </div>
         </div>
 
-        <div className="login-footer">
+        {/* <div className="login-footer">
           <p>
             Chưa có tài khoản?{' '}
             <button
@@ -178,7 +178,7 @@ function LoginScreen({ onSwitchToRegister }) {
               Đăng ký ngay
             </button>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -1,32 +1,5 @@
 package com.nckh.dia5.service;
 
-import com.nckh.dia5.config.BlockchainConfig;
-import com.nckh.dia5.util.BlockchainEncodingFixer;
-import com.nckh.dia5.util.SafeFunctionEncoder;
-import com.nckh.dia5.model.BlockchainTransaction;
-import com.nckh.dia5.repository.BlockchainTransactionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.web3j.abi.FunctionEncoder;
-import org.web3j.abi.EventEncoder;
-import org.web3j.abi.EventValues;
-import org.web3j.abi.FunctionReturnDecoder;
-import org.web3j.abi.TypeReference;
-import org.web3j.abi.datatypes.*;
-import org.web3j.abi.datatypes.generated.Bytes32;
-import org.web3j.abi.datatypes.generated.Uint256;
-import org.web3j.protocol.core.methods.response.Log;
-import org.web3j.tx.Contract;
-import org.web3j.crypto.Credentials;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.tx.RawTransactionManager;
-import org.web3j.tx.TransactionManager;
-import org.web3j.tx.gas.ContractGasProvider;
-
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,10 +9,42 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import org.springframework.stereotype.Service;
+import org.web3j.abi.EventEncoder;
+import org.web3j.abi.EventValues;
+import org.web3j.abi.TypeReference;
+import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.DynamicArray;
+import org.web3j.abi.datatypes.DynamicStruct;
+import org.web3j.abi.datatypes.Event;
+import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Type;
+import org.web3j.abi.datatypes.Utf8String;
+import org.web3j.abi.datatypes.generated.Bytes32;
+import org.web3j.abi.datatypes.generated.Uint256;
+import org.web3j.crypto.Credentials;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.response.Log;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.tx.Contract;
+import org.web3j.tx.RawTransactionManager;
+import org.web3j.tx.TransactionManager;
+import org.web3j.tx.gas.ContractGasProvider;
+
+import com.nckh.dia5.config.BlockchainConfig;
+import com.nckh.dia5.model.BlockchainTransaction;
+import com.nckh.dia5.repository.BlockchainTransactionRepository;
+import com.nckh.dia5.util.BlockchainEncodingFixer;
+import com.nckh.dia5.util.SafeFunctionEncoder;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Service tương tác với PharmaLedgerOptimized Smart Contract
  * Đã được tối ưu hóa để giảm số lượng transaction và gas fee.
- * 
+ *
  * QUY TRÌNH CHUẨN:
  * 1. Tạo lô (Manufacturer): 1 Tx (createBatchWithItems)
  * 2. Chuyển hàng (Sender): 1 Tx (createAndDispatchShipment)
@@ -80,7 +85,7 @@ public class BlockchainService {
     }
 
     // Event definitions for decoding
-    private static final Event BATCH_CREATED_EVENT = new Event("BatchCreated", 
+    private static final Event BATCH_CREATED_EVENT = new Event("BatchCreated",
             Arrays.asList(
                 new TypeReference<Uint256>(true) {}, // batchId (indexed)
                 new TypeReference<Address>(true) {}, // manufacturer (indexed)
@@ -92,7 +97,7 @@ public class BlockchainService {
                 new TypeReference<Uint256>(false) {}
             ));
 
-    private static final Event SHIPMENT_CREATED_EVENT = new Event("ShipmentCreatedAndDispatched", 
+    private static final Event SHIPMENT_CREATED_EVENT = new Event("ShipmentCreatedAndDispatched",
             Arrays.asList(
                 new TypeReference<Uint256>(true) {}, // shipmentId (indexed)
                 new TypeReference<Uint256>(true) {}, // batchId (indexed)
@@ -108,7 +113,7 @@ public class BlockchainService {
     // ============================================================
     // 1. MANUFACTURER: TẠO LÔ THUỐC (1 Tx)
     // ============================================================
-    
+
     public CompletableFuture<TransactionReceipt> createBatchWithItems(
             String drugName,
             String manufacturerName,
@@ -119,7 +124,7 @@ public class BlockchainService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Creating batch on blockchain: drugName={}, quantity={}, merkleRoot={}", 
+                log.info("Creating batch on blockchain: drugName={}, quantity={}, merkleRoot={}",
                          drugName, quantity, itemsMerkleRoot);
 
                 // 1. Prepare DrugInfo struct
@@ -165,14 +170,14 @@ public class BlockchainService {
             BigInteger quantity,
             BigInteger expiryDate,
             String storageConditions) {
-        
+
         // Use current time as manufacture date
         BigInteger manufactureDate = BigInteger.valueOf(System.currentTimeMillis() / 1000);
-        
+
         // Use a dummy merkle root (valid 32 bytes hex)
         // In production, this should be calculated from actual items
         String dummyRoot = "0x0000000000000000000000000000000000000000000000000000000000000001";
-        
+
         return createBatchWithItems(
             drugName,
             manufacturerName,
@@ -234,12 +239,12 @@ public class BlockchainService {
             String trackingNumber) {
         // Use default values for missing parameters
         return createAndDispatchShipment(
-            batchId, 
-            toAddress, 
+            batchId,
+            toAddress,
             "Unknown Location", // fromLocation
             "Unknown Location", // toLocation
-            quantity, 
-            trackingNumber, 
+            quantity,
+            trackingNumber,
             "" // notes
         );
     }
@@ -261,7 +266,7 @@ public class BlockchainService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("🚚 Receiving shipment on blockchain: shipmentId={}, location={}, receiver={}", 
+                log.info("🚚 Receiving shipment on blockchain: shipmentId={}, location={}, receiver={}",
                          shipmentId, receiverLocationName, receiverAddress);
 
                 List<Type> inputParameters = Arrays.asList(
@@ -279,7 +284,7 @@ public class BlockchainService {
                 // The service wallet is the authorized relayer for all on-chain operations.
                 // Pass null as fromAddress so getCredentialsForAddress returns this.credentials.
                 TransactionReceipt receipt = executeTransaction(function, null, null);
-                log.info("✅ receiveShipment TX success: hash={}, block={}", 
+                log.info("✅ receiveShipment TX success: hash={}, block={}",
                          receipt.getTransactionHash(), receipt.getBlockNumber());
                 return receipt;
 
@@ -337,7 +342,7 @@ public class BlockchainService {
     // ============================================================
     // BATCH STATUS: THU HỒI LÔ (1 Tx)
     // ============================================================
-    
+
     public CompletableFuture<TransactionReceipt> recallBatch(BigInteger batchId, com.nckh.dia5.model.DrugBatch batch) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -414,7 +419,7 @@ public class BlockchainService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Updating item status: batchId={}, itemCode={}, newStatus={}, reason={}", 
+                log.info("Updating item status: batchId={}, itemCode={}, newStatus={}, reason={}",
                          batchId, itemCode, newStatus, reason);
 
                 // Convert proof to Bytes32 list
@@ -468,9 +473,9 @@ public class BlockchainService {
     }
 
     public CompletableFuture<TransactionReceipt> updateShipmentStatus(
-            BigInteger shipmentId, 
-            BigInteger status, 
-            String location, 
+            BigInteger shipmentId,
+            BigInteger status,
+            String location,
             String notes) {
         return CompletableFuture.completedFuture(new TransactionReceipt());
     }
@@ -582,8 +587,8 @@ public class BlockchainService {
 
         Credentials txCredentials = getCredentialsForAddress(fromAddress);
         TransactionManager txManager = new RawTransactionManager(web3j, txCredentials, blockchainConfig.getChainId());
-        
-        org.web3j.protocol.core.methods.response.EthSendTransaction response = 
+
+        org.web3j.protocol.core.methods.response.EthSendTransaction response =
             txManager.sendTransaction(
                 gasProvider.getGasPrice(),
                 gasProvider.getGasLimit(),
@@ -598,10 +603,11 @@ public class BlockchainService {
 
         // Wait for receipt
         String txHash = response.getTransactionHash();
+        System.out.println("TX HASH = " + txHash);
         log.info("📡 TX sent: hash={}, function={}", txHash, function.getName());
-        
+
         TransactionReceipt receipt = null;
-        for (int i = 0; i < 60; i++) { // wait up to 60s
+        for (int i = 0; i < 180; i++) { // wait up to 60s
             Optional<TransactionReceipt> receiptOpt = web3j.ethGetTransactionReceipt(txHash).send().getTransactionReceipt();
             if (receiptOpt.isPresent()) {
                 receipt = receiptOpt.get();
@@ -632,8 +638,8 @@ public class BlockchainService {
                 txRecord.setFunctionName(function.getName());
                 txRecord.setGasUsed(receipt.getGasUsed());
                 txRecord.setGasPrice(gasProvider.getGasPrice());
-                txRecord.setStatus(receipt.isStatusOK() ? 
-                        BlockchainTransaction.TransactionStatus.SUCCESS : 
+                txRecord.setStatus(receipt.isStatusOK() ?
+                        BlockchainTransaction.TransactionStatus.SUCCESS :
                         BlockchainTransaction.TransactionStatus.FAILED);
                 txRecord.setTimestamp(java.time.LocalDateTime.now());
                 if (batch != null) {
@@ -672,13 +678,13 @@ public class BlockchainService {
     private String callFunction(Function function) throws Exception {
         String contractAddress = blockchainConfig.getContractAddress();
         String encodedFunction = safeFunctionEncoder.safeEncode(function);
-        
+
         org.web3j.protocol.core.methods.response.EthCall response = web3j.ethCall(
             org.web3j.protocol.core.methods.request.Transaction.createEthCallTransaction(
                 credentials.getAddress(), contractAddress, encodedFunction),
             DefaultBlockParameterName.LATEST
         ).send();
-        
+
         return response.getValue();
     }
 }

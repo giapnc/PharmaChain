@@ -58,7 +58,7 @@ public class BatchItemsController {
 
             // Build response
             Map<String, Object> response = new HashMap<>();
-            
+
             // Batch info
             Map<String, Object> batchInfo = new HashMap<>();
             batchInfo.put("id", batch.getId());
@@ -70,7 +70,7 @@ public class BatchItemsController {
             batchInfo.put("manufactureDate", batch.getManufactureTimestamp());
             batchInfo.put("expiryDate", batch.getExpiryDate());
             batchInfo.put("status", batch.getStatus());
-            
+
             response.put("batch", batchInfo);
 
             // Items info with QR data
@@ -84,10 +84,10 @@ public class BatchItemsController {
                 itemData.put("manufactureDate", item.getManufactureDate());
                 itemData.put("expiryDate", item.getExpiryDate());
                 itemData.put("createdAt", item.getCreatedAt());
-                
+
                 itemsList.add(itemData);
             }
-            
+
             response.put("items", itemsList);
             response.put("totalItems", items.size());
 
@@ -128,13 +128,13 @@ public class BatchItemsController {
 
             for (int i = 0; i < items.size(); i++) {
                 ProductItem item = items.get(i);
-                
+
                 try {
                     // Generate QR code image
                     byte[] qrImage = qrCodeService.generateQRCodeBytes(item.getItemCode(), 300, 300);
 
                     // Add to ZIP
-                    String fileName = String.format("%s_Item_%d_%s.png", 
+                    String fileName = String.format("%s_Item_%d_%s.png",
                             batch.getBatchNumber(), (i + 1), item.getItemCode());
                     ZipEntry entry = new ZipEntry(fileName);
                     zos.putNextEntry(entry);
@@ -151,7 +151,7 @@ public class BatchItemsController {
             // Prepare response
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", 
+            headers.setContentDispositionFormData("attachment",
                     String.format("QR_Codes_%s.zip", batch.getBatchNumber()));
 
             return ResponseEntity.ok()
@@ -178,7 +178,7 @@ public class BatchItemsController {
 
             for (DrugBatch batch : batches) {
                 List<ProductItem> items = productItemService.findByBatchId(batch.getId());
-                
+
                 Map<String, Object> batchData = new HashMap<>();
                 batchData.put("id", batch.getId());
                 batchData.put("batchId", batch.getBatchId());
@@ -190,7 +190,7 @@ public class BatchItemsController {
                 batchData.put("expiryDate", batch.getExpiryDate());
                 batchData.put("status", batch.getStatus());
                 batchData.put("itemsCount", items.size());
-                
+
                 // Count by status
                 Map<String, Long> statusCounts = new HashMap<>();
                 for (ProductItem item : items) {
@@ -198,7 +198,7 @@ public class BatchItemsController {
                     statusCounts.put(status, statusCounts.getOrDefault(status, 0L) + 1);
                 }
                 batchData.put("itemsStatusCounts", statusCounts);
-                
+
                 result.add(batchData);
             }
 
@@ -233,7 +233,7 @@ public class BatchItemsController {
             // Delete all items of this batch first
             List<ProductItem> items = productItemService.findByBatchId(batchId);
             log.info("Deleting {} items for batch {}", items.size(), batchNumber);
-            
+
             for (ProductItem item : items) {
                 productItemService.deleteItem(item.getId());
             }
@@ -243,7 +243,7 @@ public class BatchItemsController {
             log.info("Successfully deleted batch {} with {} items", batchNumber, items.size());
 
             return ResponseEntity.ok(ApiResponse.success(
-                    batchNumber, 
+                    batchNumber,
                     String.format("Đã xóa lô %s và %d sản phẩm thành công", batchNumber, items.size())
             ));
 

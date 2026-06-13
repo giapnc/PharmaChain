@@ -125,10 +125,10 @@ public class ProductItemService {
     public void generateQRImageForItem(ProductItem item) throws WriterException, IOException {
         byte[] qrImageBytes = qrCodeService.generateQRCodeBytes(item.getItemCode());
         String imagePath = qrCodeService.getQRCodeFilePath(item.getItemCode());
-        
+
         item.setQrImagePath(imagePath);
         productItemRepository.save(item);
-        
+
         log.debug("Generated QR image for item: {}", item.getItemCode());
     }
 
@@ -166,29 +166,29 @@ public class ProductItemService {
     private String generateItemCode(String prefix, Long batchId, int sequence) {
         return String.format("%s-BATCH%06d-%04d", prefix, batchId, sequence);
     }
-    
+
     /**
      * Generate item code từ drug name và dosage (BỎ DẤU TIẾNG VIỆT)
      */
     private String generateItemCodeFromDrugName(String drugName) {
         String normalizedName = VietnameseUtils.removeVietnameseDiacritics(drugName);
-        
+
         String cleanName = normalizedName.trim().split("\\s+")[0];
         char firstChar = Character.toUpperCase(cleanName.charAt(0));
         char lastChar = Character.toUpperCase(cleanName.charAt(cleanName.length() - 1));
-        
+
         String dosage = "";
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\s*mg");
         java.util.regex.Matcher matcher = pattern.matcher(normalizedName);
         if (matcher.find()) {
             dosage = matcher.group(1);
         }
-        
+
         String randomDigits = String.format("%07d", new java.util.Random().nextInt(10000000));
-        
+
         return String.format("%c%c%s-%s", firstChar, lastChar, dosage, randomDigits);
     }
-    
+
     /**
      * Auto-generate items khi tạo batch (gọi từ DrugTraceabilityService)
      * OPTIMIZED FLOW: Generate items → Calculate Merkle root → Register to blockchain
@@ -196,7 +196,7 @@ public class ProductItemService {
     @Transactional
     public List<ProductItem> autoGenerateItemsForNewBatch(DrugBatch batch, Long quantity) {
         log.info("Auto-generating {} items for batch: {}", quantity, batch.getBatchNumber());
-        
+
         // Find or create DrugProduct
         DrugProduct drugProduct = drugProductRepository.findByName(batch.getDrugName())
                 .stream()
@@ -208,9 +208,9 @@ public class ProductItemService {
                     newProduct.setStatus("ACTIVE");
                     return drugProductRepository.save(newProduct);
                 });
-        
+
         List<ProductItem> items = new ArrayList<>();
-        
+
         for (int i = 0; i < quantity; i++) {
             String itemCode;
             int attempts = 0;
@@ -218,12 +218,12 @@ public class ProductItemService {
                 itemCode = generateItemCodeFromDrugName(batch.getDrugName());
                 attempts++;
             } while (productItemRepository.existsByItemCode(itemCode) && attempts < 10);
-            
+
             if (attempts >= 10) {
                 log.error("Failed to generate unique item code after 10 attempts");
                 throw new RuntimeException("Cannot generate unique item code");
             }
-            
+
             ProductItem item = new ProductItem();
             item.setItemCode(itemCode);
             item.setDrugBatch(batch);
@@ -234,46 +234,46 @@ public class ProductItemService {
             item.setExpiryDate(batch.getExpiryDate());
             item.setQrCodeData(itemCode);
             item.setQrGeneratedAt(LocalDateTime.now());
-            
+
             items.add(item);
         }
-        
+
         if (items.isEmpty()) {
             log.error("No items were generated!");
             throw new RuntimeException("Failed to generate items - list is empty");
         }
-        
+
         // Batch save
         List<ProductItem> savedItems = productItemRepository.saveAll(items);
         log.info("Successfully auto-generated {} items for batch {}", savedItems.size(), batch.getBatchNumber());
-        
+
         // Create MANUFACTURE movements
         createManufactureMovements(savedItems, batch);
-        
+
         // ========================================
         // REGISTER BATCH & ITEMS ON BLOCKCHAIN
         // ========================================
         try {
             log.info("🔗 Registering batch and {} items on blockchain for batch {}", savedItems.size(), batch.getBatchNumber());
-            
+
             // Extract item codes
             List<String> itemCodes = savedItems.stream()
                     .map(ProductItem::getItemCode)
                     .filter(code -> code != null && !code.isEmpty())
                     .collect(Collectors.toList());
-            
+
             log.info("📋 Item codes to register: {}", itemCodes);
-            
+
             if (itemCodes.isEmpty()) {
                 log.error("❌ Item codes list is EMPTY! Cannot register to blockchain.");
                 throw new RuntimeException("No item codes to register");
             }
-            
+
             // STEP 1: Create Merkle Tree
             MerkleTreeService.MerkleTree merkleTree = merkleTreeService.createMerkleTree(itemCodes);
             String merkleRoot = merkleTree.getRoot();
             log.info("🌳 Created Merkle tree with root: {}", merkleRoot);
-            
+
             // STEP 2: Create batch on PharmaLedgerOptimized contract with Merkle root
             log.info("📦 Creating batch on blockchain with Merkle root...");
             BigInteger expiryTimestamp = BigInteger.valueOf(
@@ -282,7 +282,7 @@ public class ProductItemService {
             BigInteger manufactureTimestamp = BigInteger.valueOf(
                 batch.getManufactureTimestamp().toEpochSecond(java.time.ZoneOffset.UTC)
             );
-            
+
             TransactionReceipt batchReceipt = blockchainService.createBatchWithItems(
                     batch.getDrugName(),
                     batch.getManufacturer(),
@@ -290,47 +290,42 @@ public class ProductItemService {
                     manufactureTimestamp,
                     expiryTimestamp,
                     merkleRoot
-            ).get(30, java.util.concurrent.TimeUnit.SECONDS);
-            
+            ).get();
+
             if (batchReceipt != null && "0x1".equals(batchReceipt.getStatus())) {
                 log.info("✅ Batch created on blockchain successfully!");
                 log.info("📝 Batch TX Hash: {}", batchReceipt.getTransactionHash());
-                
+
                 // Update batch with blockchain info
                 batch.setTransactionHash(batchReceipt.getTransactionHash());
                 batch.setBlockNumber(batchReceipt.getBlockNumber() != null ? batchReceipt.getBlockNumber() : BigInteger.ONE);
-                
+
                 // ✅ CRITICAL FIX: Extract the REAL batchId assigned by the blockchain counter
                 blockchainService.extractBatchId(batchReceipt).ifPresent(realId -> {
                     log.info("🎯 EXTRACTED REAL blockchain batchId: {}", realId);
                     batch.setBatchId(realId);
                 });
-                
+
                 batch.setItemsMerkleRoot(merkleRoot); // ← Save Merkle Root
                 batch.setIsSynced(true);
                 drugBatchRepository.save(batch);
                 log.info("✅ Updated batch with blockchain TX: {}", batchReceipt.getTransactionHash());
-                
+
                 // Update items with blockchain info AND Merkle Proofs
                 updateItemsBlockchainStatus(savedItems, batch.getBatchId(), batchReceipt.getTransactionHash());
-                
+
             } else {
                 log.error("❌ Batch creation failed on blockchain");
                 throw new RuntimeException("Batch creation failed");
             }
-            
-        } catch (java.util.concurrent.TimeoutException te) {
-            log.warn("⏱️ Blockchain registration timed out after 30 seconds. Items saved in database but not synced to blockchain yet.");
-            log.warn("💡 You can retry blockchain sync later using the batch sync endpoint.");
+
         } catch (Exception e) {
-            log.error("❌ Failed to register items on blockchain: {}", e.getMessage(), e);
-            log.warn("📊 Items are saved in database but not yet synced to blockchain.");
-            log.warn("💡 You can retry blockchain sync later.");
+           throw new RuntimeException(e);
         }
-        
+
         return savedItems;
     }
-    
+
     /**
      * Register items to blockchain (deprecated)
      */
@@ -338,7 +333,7 @@ public class ProductItemService {
         log.warn("⚠️ registerItemsToBlockchain is deprecated in optimized mode. Items are verified via Merkle Proof.");
         return null;
     }
-    
+
     /**
      * Update items with blockchain sync status and Merkle proof
      */
@@ -346,39 +341,39 @@ public class ProductItemService {
     public void updateItemsBlockchainStatus(List<ProductItem> items, BigInteger batchId, String transactionHash) {
         try {
             log.info("Updating {} items with blockchain sync status", items.size());
-            
+
             // Get all item codes for Merkle tree
             List<String> allItemCodes = items.stream()
                     .map(ProductItem::getItemCode)
                     .collect(Collectors.toList());
-            
+
             // Create Merkle tree
             MerkleTreeService.MerkleTree merkleTree = merkleTreeService.createMerkleTree(allItemCodes);
-            
+
             // Update each item
             for (ProductItem item : items) {
                 // Generate Merkle proof for this item
                 List<String> proof = merkleTreeService.generateProof(merkleTree, item.getItemCode());
-                
+
                 // Convert proof to JSON string
                 String proofJson = String.join(",", proof);
-                
+
                 // Update item
                 item.setBlockchainMerkleProof(proofJson);
                 item.setIsBlockchainSynced(true);
-                
+
                 // Add blockchain info to notes
                 String notes = item.getNotes() != null ? item.getNotes() : "";
-                notes += String.format("\n[Blockchain] Registered in TX: %s at block %s", 
-                        transactionHash, 
+                notes += String.format("\n[Blockchain] Registered in TX: %s at block %s",
+                        transactionHash,
                         java.time.LocalDateTime.now());
                 item.setNotes(notes);
             }
-            
+
             // Save updates
             productItemRepository.saveAll(items);
             log.info("✅ Updated {} items with blockchain sync status", items.size());
-            
+
         } catch (Exception e) {
             log.error("Failed to update items blockchain status: {}", e.getMessage(), e);
         }
@@ -431,12 +426,12 @@ public class ProductItemService {
      */
     public Map<String, Long> getStatusCounts() {
         Map<String, Long> counts = new HashMap<>();
-        
+
         for (ProductItem.ItemStatus status : ProductItem.ItemStatus.values()) {
             long count = productItemRepository.countByCurrentStatus(status);
             counts.put(status.name(), count);
         }
-        
+
         return counts;
     }
 
@@ -495,7 +490,7 @@ public class ProductItemService {
     public ProductItem updateItemStatus(Long itemId, ProductItem.ItemStatus newStatus) {
         ProductItem item = productItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
-        
+
         item.setCurrentStatus(newStatus);
         return productItemRepository.save(item);
     }
@@ -511,7 +506,7 @@ public class ProductItemService {
     ) {
         ProductItem item = productItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
-        
+
         item.setCurrentOwnerId(newOwnerId);
         item.setCurrentOwnerType(newOwnerType);
         return productItemRepository.save(item);
@@ -555,7 +550,7 @@ public class ProductItemService {
         productItemRepository.deleteById(itemId);
         log.info("Deleted item: {}", itemId);
     }
-    
+
     @lombok.Data
     @lombok.Builder
     public static class SellResult {
@@ -571,36 +566,36 @@ public class ProductItemService {
     public SellResult sellItem(Long itemId, Long pharmacyId, String pharmacyName, String buyerInfo) {
         ProductItem item = productItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Item not found: " + itemId));
-            
+
         // Check if item is already sold
         if (item.getCurrentStatus() == ProductItem.ItemStatus.SOLD) {
             throw new RuntimeException("Sản phẩm này đã được bán trước đó!");
         }
-        
+
         // Check if item is valid for sale
         if (item.getCurrentStatus() == ProductItem.ItemStatus.RECALLED) {
             throw new RuntimeException("Sản phẩm này đã bị thu hồi, không thể bán!");
         }
-        
+
         if (item.getCurrentStatus() == ProductItem.ItemStatus.EXPIRED || item.isExpired()) {
             throw new RuntimeException("Sản phẩm này đã hết hạn, không thể bán!");
         }
-        
+
         // Update item status
         item.setCurrentStatus(ProductItem.ItemStatus.SOLD);
         item.setCurrentOwnerType(ProductItem.OwnerType.CONSUMER);
         item.setCurrentOwnerId(null); // Consumer doesn't have an ID in system
         item.setSoldAt(LocalDateTime.now());
-        
+
         // Add sale info to notes
-        String saleNotes = String.format("[SALE] Sold at %s on %s. Buyer: %s", 
+        String saleNotes = String.format("[SALE] Sold at %s on %s. Buyer: %s",
                 pharmacyName != null ? pharmacyName : "Pharmacy ID " + pharmacyId,
                 LocalDateTime.now(),
                 buyerInfo != null ? buyerInfo : "Walk-in customer");
         item.setNotes(item.getNotes() != null ? item.getNotes() + "\n" + saleNotes : saleNotes);
-        
+
         ProductItem savedItem = productItemRepository.save(item);
-        
+
         // Create SALE movement
         ProductItemMovement saleMovement = new ProductItemMovement();
         saleMovement.setProductItem(savedItem);
@@ -614,9 +609,9 @@ public class ProductItemService {
         saleMovement.setMovementTimestamp(LocalDateTime.now());
         saleMovement.setVerificationMethod(ProductItemMovement.VerificationMethod.QR_SCAN);
         saleMovement.setNotes("Counter sale at " + (pharmacyName != null ? pharmacyName : "pharmacy"));
-        
+
         movementRepository.save(saleMovement);
-        
+
         log.info("✅ Item {} sold at pharmacy {} - Status updated to SOLD", item.getItemCode(), pharmacyId);
 
         // ========================================
@@ -626,15 +621,15 @@ public class ProductItemService {
         try {
             BigInteger batchId = item.getDrugBatch().getBatchId();
             String proofJson = item.getBlockchainMerkleProof();
-            
+
             if (proofJson != null && !proofJson.isEmpty() && item.getIsBlockchainSynced()) {
                 List<String> merkleProof = objectMapper.readValue(proofJson, new TypeReference<List<String>>() {});
-                
+
                 // 1 maps to ItemStatus.SOLD in the Solidity Enum (AVAILABLE=0, SOLD=1, RECALLED=2, DAMAGED=3)
-                BigInteger customStatusSold = BigInteger.valueOf(1); 
-                
+                BigInteger customStatusSold = BigInteger.valueOf(1);
+
                 log.info("🔗 Recording SALE item on blockchain: itemCode={}, batchId={}", item.getItemCode(), batchId);
-                
+
                 TransactionReceipt receipt = blockchainService.updateItemStatus(
                         batchId,
                         item.getItemCode(),
@@ -655,13 +650,13 @@ public class ProductItemService {
         } catch (Exception e) {
             log.error("❌ Failed to initiate blockchain SALE status update: {}", e.getMessage());
         }
-        
+
         return SellResult.builder()
                 .item(savedItem)
                 .transactionHash(txHash)
                 .build();
     }
-    
+
     /**
      * ✅ NEW: Sell item by item code (for counter sales via QR scan)
      */
@@ -669,10 +664,10 @@ public class ProductItemService {
     public SellResult sellItemByCode(String itemCode, Long pharmacyId, String pharmacyName, String buyerInfo) {
         ProductItem item = productItemRepository.findByItemCode(itemCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với mã: " + itemCode));
-        
+
         return sellItem(item.getId(), pharmacyId, pharmacyName, buyerInfo);
     }
-    
+
     /**
      * ✅ NEW: Report item as damaged (Báo hỏng / Hoàn thuốc)
      */
@@ -680,9 +675,9 @@ public class ProductItemService {
     public ProductItem reportDamagedItem(String itemCode, Long pharmacyId, String reason, String imageUrl) {
         ProductItem item = productItemRepository.findByItemCode(itemCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với mã: " + itemCode));
-        
+
         // Prevent re-reporting if already damaged/recalled/sold
-        if (item.getCurrentStatus() == ProductItem.ItemStatus.DAMAGED || 
+        if (item.getCurrentStatus() == ProductItem.ItemStatus.DAMAGED ||
             item.getCurrentStatus() == ProductItem.ItemStatus.RECALLED ||
             item.getCurrentStatus() == ProductItem.ItemStatus.SOLD) {
             throw new RuntimeException("Không thể báo hỏng sản phẩm có trạng thái: " + item.getCurrentStatus());
@@ -690,12 +685,12 @@ public class ProductItemService {
 
         // 1. Update ProductItem Status in DB
         item.setCurrentStatus(ProductItem.ItemStatus.DAMAGED);
-        
+
         String notes = item.getNotes() != null ? item.getNotes() : "";
-        notes += String.format("\n[DAMAGED REPORT] Time: %s. Reason: %s. Image: %s", 
+        notes += String.format("\n[DAMAGED REPORT] Time: %s. Reason: %s. Image: %s",
                 LocalDateTime.now(), reason, imageUrl != null ? imageUrl : "None");
         item.setNotes(notes);
-        
+
         ProductItem savedItem = productItemRepository.save(item);
 
         // 2. Create Movement History
@@ -712,22 +707,22 @@ public class ProductItemService {
         movement.setMovementTimestamp(LocalDateTime.now());
         movement.setVerificationMethod(ProductItemMovement.VerificationMethod.QR_SCAN);
         movement.setNotes(String.format("Damaged at Pharmacy. Reason: %s. Image: %s", reason, imageUrl));
-        
+
         movementRepository.save(movement);
-        
+
         // 3. Register to Blockchain via Smart Contract (Asynchronous)
         try {
             BigInteger batchId = item.getDrugBatch().getBatchId();
             String proofJson = item.getBlockchainMerkleProof();
-            
+
             if (proofJson != null && !proofJson.isEmpty() && item.getIsBlockchainSynced()) {
                 List<String> merkleProof = objectMapper.readValue(proofJson, new TypeReference<List<String>>() {});
-                
+
                 // 3 maps to ItemStatus.DAMAGED in the Solidity Enum (AVAILABLE=0, SOLD=1, RECALLED=2, DAMAGED=3)
-                BigInteger customStatusDamaged = BigInteger.valueOf(3); 
-                
+                BigInteger customStatusDamaged = BigInteger.valueOf(3);
+
                 log.info("🔗 Reporting DAMAGED item on blockchain: itemCode={}, batchId={}", itemCode, batchId);
-                
+
                 blockchainService.updateItemStatus(
                         batchId,
                         itemCode,

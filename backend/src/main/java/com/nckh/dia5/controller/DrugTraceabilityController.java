@@ -41,7 +41,7 @@ public class DrugTraceabilityController {
     @PostMapping("/shipments")
     public ResponseEntity<ApiResponse<ShipmentDto>> createShipment(
             @Valid @RequestBody CreateShipmentRequest request) {
-        log.info("Creating new shipment for batch: {}, toAddress: {}, quantity: {}", 
+        log.info("Creating new shipment for batch: {}, toAddress: {}, quantity: {}",
                  request.getBatchId(), request.getToAddress(), request.getQuantity());
         log.info("Request details: {}", request);
         ShipmentDto shipment = drugTraceabilityService.createShipment(request);
@@ -57,19 +57,19 @@ public class DrugTraceabilityController {
             @PathVariable BigInteger shipmentId,
             @RequestParam(required = false, defaultValue = "Manufacturer Warehouse") String dispatchLocation,
             @RequestParam(required = false, defaultValue = "") String notes) {
-        
-        log.info("Dispatching shipment: shipmentId={}, location={}, notes={}", 
+
+        log.info("Dispatching shipment: shipmentId={}, location={}, notes={}",
                  shipmentId, dispatchLocation, notes);
-        
+
         try {
             // Call blockchain service to dispatch shipment
             blockchainService.dispatchShipment(shipmentId, dispatchLocation, notes).get();
-            
+
             // Get updated shipment info
             ShipmentDto shipment = drugTraceabilityService.getShipment(shipmentId);
-            
+
             return ResponseEntity.ok(ApiResponse.success(shipment, "Gửi hàng thành công"));
-            
+
         } catch (Exception e) {
             log.error("Failed to dispatch shipment: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(
@@ -110,14 +110,14 @@ public class DrugTraceabilityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyDrug(
             @Valid @RequestBody VerifyDrugRequest request) {
         log.info("Verifying drug with QR code: {}", request.getQrCode());
-        
+
         try {
             DrugBatchDto batch = drugTraceabilityService.verifyDrug(request);
-            
+
             // Build verification response for Flutter app
             Map<String, Object> response = new HashMap<>();
             response.put("isValid", true);
-            
+
             // Drug info
             Map<String, Object> drugInfo = new HashMap<>();
             drugInfo.put("name", batch.getDrugName());
@@ -125,11 +125,11 @@ public class DrugTraceabilityController {
             drugInfo.put("batchNumber", batch.getBatchNumber());
             drugInfo.put("expiryDate", batch.getExpiryDate());
             response.put("drugInfo", drugInfo);
-            
+
             // Get ownership history from shipments
             List<ShipmentDto> shipments = drugTraceabilityService.getShipmentsByBatch(batch.getBatchId());
             List<Map<String, Object>> ownershipHistory = new ArrayList<>();
-            
+
             // Add mint record
             Map<String, Object> mintRecord = new HashMap<>();
             mintRecord.put("action", "MINT");
@@ -137,7 +137,7 @@ public class DrugTraceabilityController {
             mintRecord.put("toAddress", batch.getManufacturerAddress());
             mintRecord.put("timestamp", batch.getManufactureTimestamp().toString());
             ownershipHistory.add(mintRecord);
-            
+
             // Add transfer records
             for (ShipmentDto shipment : shipments) {
                 if ("DELIVERED".equals(shipment.getStatus())) {
@@ -149,19 +149,19 @@ public class DrugTraceabilityController {
                     ownershipHistory.add(transferRecord);
                 }
             }
-            
+
             response.put("ownershipHistory", ownershipHistory);
             response.put("transactionHash", batch.getMintTransactionHash());
-            
+
             return ResponseEntity.ok(ApiResponse.success(response, "Xác minh thuốc thành công"));
-            
+
         } catch (Exception e) {
             log.error("Drug verification failed: {}", e.getMessage());
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("isValid", false);
             response.put("message", e.getMessage());
-            
+
             return ResponseEntity.ok(ApiResponse.success(response, "Xác minh thuốc thất bại"));
         }
     }
@@ -182,10 +182,10 @@ public class DrugTraceabilityController {
         log.info("Debug: Getting raw batch count from repository");
         List<com.nckh.dia5.model.DrugBatch> rawBatches = drugBatchRepository.findAll();
         log.info("Raw batches count: {}", rawBatches.size());
-        
+
         StringBuilder debug = new StringBuilder();
         debug.append("Raw batches in database: ").append(rawBatches.size()).append("\n");
-        
+
         for (com.nckh.dia5.model.DrugBatch batch : rawBatches) {
             debug.append("Raw Batch: id=").append(batch.getId())
                  .append(", batchId=").append(batch.getBatchId())
@@ -193,7 +193,7 @@ public class DrugTraceabilityController {
                  .append(", batchNumber=").append(batch.getBatchNumber())
                  .append("\n");
         }
-        
+
         return ResponseEntity.ok(ApiResponse.success(debug.toString(), "Debug batch information"));
     }
 
@@ -238,7 +238,7 @@ public class DrugTraceabilityController {
         log.info("Smart search shipments for identifier: {}", identifier);
         try {
             List<ShipmentDto> shipments = drugTraceabilityService.searchShipmentsByBatchIdentifier(identifier);
-            return ResponseEntity.ok(ApiResponse.success(shipments, 
+            return ResponseEntity.ok(ApiResponse.success(shipments,
                 "Tìm thấy " + shipments.size() + " shipment cho mã: " + identifier));
         } catch (ResourceNotFoundException e) {
             log.warn("No shipments found for identifier: {}", identifier);
@@ -258,7 +258,7 @@ public class DrugTraceabilityController {
         log.info("Getting shipments for batch number (Số lô): {}", batchNumber);
         try {
             List<ShipmentDto> shipments = drugTraceabilityService.getShipmentsByBatchNumber(batchNumber);
-            return ResponseEntity.ok(ApiResponse.success(shipments, 
+            return ResponseEntity.ok(ApiResponse.success(shipments,
                 "Lấy danh sách shipment theo Số lô thành công"));
         } catch (ResourceNotFoundException e) {
             log.warn("Batch not found with number: {}", batchNumber);
@@ -344,7 +344,7 @@ public class DrugTraceabilityController {
         log.info("DEBUG: Getting all batches");
         List<com.nckh.dia5.model.DrugBatch> batches = drugBatchRepository.findAll();
         log.info("DEBUG: Found {} batches in database", batches.size());
-        
+
         List<Map<String, Object>> debugInfo = batches.stream().map(batch -> {
             Map<String, Object> info = new HashMap<>();
             info.put("batchId", batch.getBatchId());
@@ -352,11 +352,11 @@ public class DrugTraceabilityController {
             info.put("status", batch.getStatus());
             info.put("currentOwner", batch.getCurrentOwner());
             info.put("quantity", batch.getQuantity());
-            log.info("DEBUG: Batch {} - {} - Status: {} - Owner: {}", 
+            log.info("DEBUG: Batch {} - {} - Status: {} - Owner: {}",
                      batch.getBatchId(), batch.getDrugName(), batch.getStatus(), batch.getCurrentOwner());
             return info;
         }).collect(Collectors.toList());
-        
+
         return ResponseEntity.ok(ApiResponse.success(debugInfo, "Debug: Lấy danh sách tất cả lô thuốc"));
     }
 
@@ -367,7 +367,7 @@ public class DrugTraceabilityController {
         log.info("DEBUG: BatchId type: {}, value: {}", request.getBatchId().getClass(), request.getBatchId());
         log.info("DEBUG: ToAddress: '{}', length: {}", request.getToAddress(), request.getToAddress().length());
         log.info("DEBUG: Quantity: {}", request.getQuantity());
-        
+
         return ResponseEntity.ok(ApiResponse.success("Validation passed", "Request is valid"));
     }
 
@@ -378,7 +378,7 @@ public class DrugTraceabilityController {
             // Create a simple batch manually
             BigInteger sampleBatchId = BigInteger.valueOf(System.currentTimeMillis());
             String manufacturerAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-            
+
             com.nckh.dia5.model.DrugBatch batch = new com.nckh.dia5.model.DrugBatch();
             batch.setBatchId(sampleBatchId);
             batch.setDrugName("Paracetamol 500mg Test");
@@ -395,16 +395,16 @@ public class DrugTraceabilityController {
             batch.setIsSynced(false);
 
             com.nckh.dia5.model.DrugBatch savedBatch = drugBatchRepository.save(batch);
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("batchId", savedBatch.getBatchId().toString());
             result.put("drugName", savedBatch.getDrugName());
             result.put("status", savedBatch.getStatus());
             result.put("currentOwner", savedBatch.getCurrentOwner());
             result.put("quantity", savedBatch.getQuantity());
-            
+
             return ResponseEntity.ok(ApiResponse.success(result, "Sample batch created successfully"));
-            
+
         } catch (Exception e) {
             log.error("Error creating sample batch: {}", e.getMessage(), e);
             return ResponseEntity.ok(ApiResponse.error("Failed to create sample distributors: " + e.getMessage()));
@@ -440,7 +440,7 @@ public class DrugTraceabilityController {
             return ResponseEntity.ok(ApiResponse.error("Không thể lấy lịch sử shipment: " + e.getMessage(), 500));
         }
     }
-    
+
     /**
      * ✅ MỚI: Lấy chi tiết shipment kèm số lượng checkpoints
      */
@@ -456,7 +456,7 @@ public class DrugTraceabilityController {
             return ResponseEntity.ok(ApiResponse.error("Không thể lấy chi tiết shipment: " + e.getMessage(), 500));
         }
     }
-    
+
     /**
      * ✅ MỚI: Cập nhật trạng thái shipment + thêm checkpoint
      */
@@ -467,16 +467,16 @@ public class DrugTraceabilityController {
             @RequestParam String location,
             @RequestParam(required = false, defaultValue = "") String notes) {
         try {
-            log.info("Adding checkpoint for shipmentId: {}, status: {}, location: {}", 
+            log.info("Adding checkpoint for shipmentId: {}, status: {}, location: {}",
                      shipmentId, status, location);
-            
+
             blockchainService.updateShipmentStatus(
                 shipmentId,
                 BigInteger.valueOf(status),
                 location,
                 notes
             ).get();
-            
+
             return ResponseEntity.ok(ApiResponse.success(
                 "Checkpoint added successfully",
                 "Đã thêm checkpoint thành công"
@@ -493,13 +493,13 @@ public class DrugTraceabilityController {
             @RequestParam String expectedOwner) {
         try {
             log.info("Verifying shipment ownership: shipmentId={}, expectedOwner={}", shipmentId, expectedOwner);
-            
+
             // Get shipment details
             ShipmentDto shipment = drugTraceabilityService.getShipment(shipmentId);
-            
+
             // Check if the expectedOwner matches the recipient
             boolean isOwner = expectedOwner.equalsIgnoreCase(shipment.getToAddress());
-            
+
             // Also verify on blockchain if needed
             if (isOwner && shipment.getBatchId() != null) {
                 try {
@@ -508,14 +508,14 @@ public class DrugTraceabilityController {
                     log.warn("Could not verify on blockchain, using database check: {}", e.getMessage());
                 }
             }
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("shipmentId", shipmentId);
             result.put("expectedOwner", expectedOwner);
             result.put("actualRecipient", shipment.getToAddress());
             result.put("isOwner", isOwner);
             result.put("status", shipment.getStatus());
-            
+
             return ResponseEntity.ok(ApiResponse.success(result, "Xác minh quyền sở hữu shipment thành công"));
         } catch (Exception e) {
             log.error("Failed to verify shipment ownership", e);
@@ -529,7 +529,7 @@ public class DrugTraceabilityController {
         try {
             Map<String, Object> result = new HashMap<>();
             result.put("scanCode", scanCode);
-            
+
             // Test 1: Try as shipment ID
             try {
                 BigInteger shipmentId = new BigInteger(scanCode);
@@ -541,7 +541,7 @@ public class DrugTraceabilityController {
                 result.put("foundAsShipment", false);
                 result.put("shipmentError", e.getMessage());
             }
-            
+
             // Test 2: Try as batch ID
             try {
                 BigInteger batchId = new BigInteger(scanCode);
@@ -554,10 +554,10 @@ public class DrugTraceabilityController {
                 result.put("foundAsBatch", false);
                 result.put("batchError", e.getMessage());
             }
-            
+
             result.put("conclusion", "Scan code not found as shipment ID or batch ID");
             return ResponseEntity.ok(ApiResponse.success(result, "Scan test completed"));
-            
+
         } catch (Exception e) {
             log.error("Error testing scan code: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to test scan code: " + e.getMessage(), 400));
@@ -569,33 +569,33 @@ public class DrugTraceabilityController {
         log.info("Getting dashboard statistics");
         try {
             Map<String, Object> stats = new HashMap<>();
-            
+
             // Get basic statistics
             List<DrugBatchDto> allBatches = drugTraceabilityService.getAllBatches();
             List<ShipmentDto> allShipments = drugTraceabilityService.getAllShipments();
-            
+
             // Calculate statistics
             long totalBatches = allBatches.size();
             long totalShipments = allShipments.size();
-            
+
             // Count by status
             long activeBatches = allBatches.stream()
                 .filter(batch -> !"EXPIRED".equals(batch.getStatus()) && !"CONSUMED".equals(batch.getStatus()))
                 .count();
-            
+
             long pendingShipments = allShipments.stream()
                 .filter(shipment -> "IN_TRANSIT".equals(shipment.getStatus()) || "PENDING".equals(shipment.getStatus()))
                 .count();
-            
+
             long deliveredShipments = allShipments.stream()
                 .filter(shipment -> "DELIVERED".equals(shipment.getStatus()))
                 .count();
-            
+
             // Calculate total quantity
             long totalQuantity = allBatches.stream()
                 .mapToLong(batch -> batch.getQuantity() != null ? batch.getQuantity() : 0L)
                 .sum();
-            
+
             // Build stats response
             stats.put("totalBatches", totalBatches);
             stats.put("activeBatches", activeBatches);
@@ -603,23 +603,23 @@ public class DrugTraceabilityController {
             stats.put("pendingShipments", pendingShipments);
             stats.put("deliveredShipments", deliveredShipments);
             stats.put("totalQuantity", totalQuantity);
-            
+
             // Recent activity (last 10 shipments)
             List<ShipmentDto> recentShipments = allShipments.stream()
                 .sorted((s1, s2) -> s2.getShipmentTimestamp().compareTo(s1.getShipmentTimestamp()))
                 .limit(10)
                 .collect(Collectors.toList());
             stats.put("recentShipments", recentShipments);
-            
+
             // Monthly statistics (simplified)
             Map<String, Long> monthlyStats = new HashMap<>();
             monthlyStats.put("currentMonth", (long) allShipments.stream()
                 .filter(s -> s.getShipmentTimestamp().getMonthValue() == LocalDateTime.now().getMonthValue())
                 .collect(Collectors.toList()).size());
             stats.put("monthlyStats", monthlyStats);
-            
+
             return ResponseEntity.ok(ApiResponse.success(stats, "Lấy thống kê dashboard thành công"));
-            
+
         } catch (Exception e) {
             log.error("Error getting dashboard stats: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get dashboard stats: " + e.getMessage(), 400));
@@ -631,15 +631,15 @@ public class DrugTraceabilityController {
         log.info("DEBUG: Getting blockchain information");
         try {
             Map<String, Object> info = new HashMap<>();
-            
+
             // Check blockchain connectivity
             info.put("blockchainConnected", "Checking...");
             info.put("latestBlock", "Fetching...");
             info.put("contractAddress", "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
             info.put("networkId", "31337"); // Hardhat local network
-            
+
             return ResponseEntity.ok(ApiResponse.success(info, "Blockchain info retrieved"));
-            
+
         } catch (Exception e) {
             log.error("Error getting blockchain info: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get blockchain info: " + e.getMessage(), 400));
@@ -654,9 +654,9 @@ public class DrugTraceabilityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMyShipments(
             @PathVariable String distributorAddress,
             @RequestParam(required = false) String status) {
-        
+
         log.info("Getting shipments for distributor: {}, status filter: {}", distributorAddress, status);
-        
+
         try {
             // Validate address format
             if (!distributorAddress.matches("^0x[a-fA-F0-9]{40}$")) {
@@ -664,10 +664,10 @@ public class DrugTraceabilityController {
                     ApiResponse.error("Địa chỉ ví không hợp lệ", 400)
                 );
             }
-            
+
             // Get shipments sent to this distributor
             List<ShipmentDto> allShipments = drugTraceabilityService.getShipmentsByRecipient(distributorAddress);
-            
+
             // Filter by status if provided
             List<ShipmentDto> filteredShipments = allShipments;
             if (status != null && !status.isEmpty()) {
@@ -675,33 +675,33 @@ public class DrugTraceabilityController {
                     .filter(shipment -> status.equalsIgnoreCase(shipment.getStatus()))
                     .collect(Collectors.toList());
             }
-            
+
             // Prepare response with summary statistics
             Map<String, Object> response = new HashMap<>();
             response.put("distributorAddress", distributorAddress);
             response.put("shipments", filteredShipments);
             response.put("totalCount", filteredShipments.size());
-            
+
             // Count by status
             Map<String, Long> statusCounts = allShipments.stream()
                 .collect(Collectors.groupingBy(
-                    ShipmentDto::getStatus, 
+                    ShipmentDto::getStatus,
                     Collectors.counting()
                 ));
             response.put("statusSummary", statusCounts);
-            
+
             // Recent shipments (last 5)
             List<ShipmentDto> recentShipments = filteredShipments.stream()
                 .sorted((s1, s2) -> s2.getShipmentTimestamp().compareTo(s1.getShipmentTimestamp()))
                 .limit(5)
                 .collect(Collectors.toList());
             response.put("recentShipments", recentShipments);
-            
-            String message = String.format("Lấy danh sách %d shipments cho nhà phân phối %s thành công", 
+
+            String message = String.format("Lấy danh sách %d shipments cho nhà phân phối %s thành công",
                                          filteredShipments.size(), distributorAddress);
-            
+
             return ResponseEntity.ok(ApiResponse.success(response, message));
-            
+
         } catch (Exception e) {
             log.error("Error getting shipments for distributor {}: {}", distributorAddress, e.getMessage(), e);
             return ResponseEntity.badRequest().body(
@@ -717,37 +717,37 @@ public class DrugTraceabilityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getShipmentDetailsForDistributor(
             @PathVariable BigInteger shipmentId,
             @PathVariable String distributorAddress) {
-        
+
         log.info("Getting shipment details: shipmentId={}, distributorAddress={}", shipmentId, distributorAddress);
-        
+
         try {
             // Get shipment details
             ShipmentDto shipment = drugTraceabilityService.getShipment(shipmentId);
-            
+
             // Verify ownership - only the recipient can view details
             if (!distributorAddress.equalsIgnoreCase(shipment.getToAddress())) {
                 return ResponseEntity.status(403).body(
                     ApiResponse.error("Bạn không có quyền xem shipment này", 403)
                 );
             }
-            
+
             // Get batch information
             DrugBatchDto batch = drugTraceabilityService.getBatch(shipment.getBatchId());
-            
+
             // Get transaction history for this shipment
-            List<BlockchainTransactionDto> transactions = 
+            List<BlockchainTransactionDto> transactions =
                 drugTraceabilityService.getBatchTransactionHistory(shipment.getBatchId());
-            
+
             // Prepare detailed response
             Map<String, Object> response = new HashMap<>();
             response.put("shipment", shipment);
             response.put("batch", batch);
             response.put("transactions", transactions);
             response.put("canReceive", "IN_TRANSIT".equals(shipment.getStatus()));
-            
+
             // Add tracking timeline
             List<Map<String, Object>> timeline = new ArrayList<>();
-            
+
             // Add shipment created event
             Map<String, Object> createdEvent = new HashMap<>();
             createdEvent.put("event", "SHIPMENT_CREATED");
@@ -755,7 +755,7 @@ public class DrugTraceabilityController {
             createdEvent.put("description", "Lô hàng được tạo và bắt đầu vận chuyển");
             createdEvent.put("status", "COMPLETED");
             timeline.add(createdEvent);
-            
+
             // Add in-transit event if status is IN_TRANSIT or DELIVERED
             if ("IN_TRANSIT".equals(shipment.getStatus()) || "DELIVERED".equals(shipment.getStatus())) {
                 Map<String, Object> transitEvent = new HashMap<>();
@@ -765,7 +765,7 @@ public class DrugTraceabilityController {
                 transitEvent.put("status", "COMPLETED");
                 timeline.add(transitEvent);
             }
-            
+
             // Add delivered event if status is DELIVERED
             if ("DELIVERED".equals(shipment.getStatus())) {
                 Map<String, Object> deliveredEvent = new HashMap<>();
@@ -775,11 +775,11 @@ public class DrugTraceabilityController {
                 deliveredEvent.put("status", "COMPLETED");
                 timeline.add(deliveredEvent);
             }
-            
+
             response.put("timeline", timeline);
-            
+
             return ResponseEntity.ok(ApiResponse.success(response, "Lấy chi tiết shipment thành công"));
-            
+
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(404).body(
                 ApiResponse.error("Không tìm thấy shipment", 404)

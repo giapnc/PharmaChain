@@ -1,10 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Home,
-  Package,
-  Plus,
-  Truck,
   BarChart3,
   Menu,
   X,
@@ -16,7 +12,6 @@ import {
   LogOut,
   ChevronDown,
   UserCog,
-  QrCode
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Layout.css';
